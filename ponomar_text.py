@@ -395,7 +395,8 @@ ZACHALO_FIELDS = ("book", "verse_now", "n_now", "pos_now", "verse_new", "n_new",
 
 
 def load_zachalo_fixes(path):
-    """corrections/zachalo.tsv (16.11): пометка зачала, сверенная с печатью, — откуда (стих, номер, слово) и куда."""
+    """corrections/zachalo.tsv (16.11): пометка зачала, сверенная с печатью, — откуда (стих, номер, слово) и куда.
+    Пустые verse_now, n_now и pos_now (17.11) — новая пометка, которой в источнике не было."""
     lines = Path(path).read_text(encoding="utf-8").lstrip("\ufeff").split("\n")
     if not lines or lines[0] != "\t".join(ZACHALO_FIELDS):
         sys.exit("refused: zachalo fixes: bad header")
@@ -407,7 +408,9 @@ def load_zachalo_fixes(path):
         if len(f) != len(ZACHALO_FIELDS):
             sys.exit("refused: zachalo fixes line %d: expected %d fields" % (lineno, len(ZACHALO_FIELDS)))
         row = dict(zip(ZACHALO_FIELDS, f))
-        for k in ("verse_now", "verse_new"):
+        if not (row["verse_now"] or row["n_now"] or row["pos_now"]):
+            row["add"] = True
+        for k in ("verse_new",) if row.get("add") else ("verse_now", "verse_new"):
             if not VERSE_REF_RE.fullmatch(row[k]):
                 sys.exit("refused: zachalo fixes line %d: bad %s %r" % (lineno, k, row[k]))
         rows.append(row)
@@ -427,8 +430,19 @@ def apply_zachalo_fixes(data, rows):
     for row in rows:
         if row["book"] != data.get("book"):
             continue
-        a = tuple(int(x) for x in VERSE_REF_RE.fullmatch(row["verse_now"]).groups())
         b = tuple(int(x) for x in VERSE_REF_RE.fullmatch(row["verse_new"]).groups())
+        if row.get("add"):
+            dst, pos = verses.get(b), int(row["pos_new"])
+            n_new = int(row["n_new"]) if row["n_new"] else None
+            if dst is None or pos > len(dst.get("tokens") or []):
+                sys.exit("refused: zachalo add %s %s: no verse or pos %d past it" % (row["book"], row["verse_new"], pos))
+            if any(z.get("pos") == pos for z in dst.get("zachalo") or []):
+                sys.exit("refused: zachalo add %s %s: a mark is already at pos %d" % (row["book"], row["verse_new"], pos))
+            z = {"n": n_new, "label": "Заⷱ҇ %d" % n_new if n_new is not None else "Заⷱ҇", "pos": pos}
+            dst["zachalo"] = sorted((dst.get("zachalo") or []) + [z], key=lambda x: x["pos"])
+            applied.append({k: v for k, v in row.items() if k != "add"})
+            continue
+        a = tuple(int(x) for x in VERSE_REF_RE.fullmatch(row["verse_now"]).groups())
         n_now = int(row["n_now"]) if row["n_now"] else None
         n_new = int(row["n_new"]) if row["n_new"] else None
         src, dst = verses.get(a), verses.get(b)
