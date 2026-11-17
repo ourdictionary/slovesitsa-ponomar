@@ -97,8 +97,15 @@ def apply_reading_fixes(services, rows, bible):
         n = int(r["n"])
         if not 1 <= n <= len(idx):
             refuse("corrections_readings.tsv: в %s чтение %s встречается %d раз, нужно №%d" % (r["service"], r["was"], len(idx), n))
-        part = services[r["service"]]["parts"][idx[n - 1]]
+        parts = services[r["service"]]["parts"]
+        part = parts[idx[n - 1]]
         bid, rg = bible.ranges(r["became"])
+        if bid != part["book"]:  # другая книга — и возглас перед чтением («Ѿ лꙋкѝ…» → «Ѿ матѳе́а…»), иначе он врёт
+            intro = next((p for p in reversed(parts[:idx[n - 1]]) if p["kind"] == "intro"), None)
+            same = [p for s in services.values() for p in s["parts"] if p["kind"] == "intro" and p.get("book") == bid]
+            if not intro or intro.get("book") != part["book"] or not same:
+                refuse("corrections_readings.tsv: %s %s → %s: возглас перед чтением не найден" % (r["service"], r["was"], r["became"]))
+            intro.update(book=bid, **{k: same[0][k] for k in ("text", "tokens", "lead") if k in same[0]})
         part.update(book=bid, ranges=rg, ref=r["became"], ref_ponomar=r["was"])
         applied.append(r)
     return applied
