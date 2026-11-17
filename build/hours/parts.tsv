@@ -1,0 +1,9 @@
+template	PFlag	prayer	psalm	reading	intro	menaion	var	gap	title	subtitle	var_files_absent
+Prime		78	3	0	0	0	4	2	1	0	
+ThirdHour		68	3	0	0	0	4	2	1	0	Var/PTrop31
+SixthHour		68	3	0	0	0	4	2	1	0	Var/PTrop61,Var/PTrop62
+NinthHour		69	3	0	0	0	4	2	1	0	Var/PTrop91
+PaschalHours		19	0	0	0	0	0	1	1	0	
+RoyalHours	0	203	15	21	12	64	0	2	1	5	
+RoyalHours	1	203	13	21	12	56	0	2	1	5	
+RoyalHours	2	203	13	21	12	54	0	2	1	5	
